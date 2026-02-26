@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>浪漫爱心互动</title>
+<title>浪漫魔法爱心</title>
 <style>
 body{
     margin:0;
@@ -19,7 +19,7 @@ canvas{
 
 <!-- 背景音乐 -->
 <audio id="bgm" loop>
-  <source src="https://www.bensound.com/bensound-music/bensound-romantic.mp3" type="audio/mpeg">
+  <source src="daylight.mp3" type="audio/mpeg">
 </audio>
 
 <script>
@@ -29,6 +29,15 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 let time = 0;
+
+// 爱心位置
+let heartPos = {x: canvas.width/2, y: canvas.height/2};
+let targetPos = {x: heartPos.x, y: heartPos.y};
+
+// 爱心状态
+let heartScale = 15;
+let heartAlpha = 1;
+let heartDisappear = false;
 
 // 星空粒子
 const stars = [];
@@ -47,14 +56,14 @@ for(let i=0;i<50;i++){
 const burstPetals = [];
 
 // 爱心函数
-function heart(t, scale){
+function heartShape(t, scale){
     const x = 16 * Math.pow(Math.sin(t),3);
     const y = 13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t);
     return {x: x*scale, y: -y*scale};
 }
 
 // 绘制
-function draw(scale){
+function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
     // 星空背景
@@ -86,76 +95,116 @@ function draw(scale){
         p.y += p.vy;
         p.vy += 0.05; // 重力
         p.angle += 0.1;
+        p.alpha -= 0.01; // 渐隐
+        if(p.alpha <= 0){
+            burstPetals.splice(i,1);
+            continue;
+        }
         ctx.save();
         ctx.translate(p.x,p.y);
         ctx.rotate(p.angle);
+        ctx.globalAlpha = p.alpha;
         ctx.beginPath();
         ctx.arc(0,0,p.size,0,Math.PI*2);
         ctx.fillStyle = p.color;
         ctx.fill();
         ctx.restore();
-        if(p.y>canvas.height+50) burstPetals.splice(i,1);
+        ctx.globalAlpha = 1;
     }
 
     // 爱心渐变发光
-    let gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 10, canvas.width/2, canvas.height/2, 200);
-    gradient.addColorStop(0,'#ff5c5c');
-    gradient.addColorStop(0.5,'#ff2a8f');
-    gradient.addColorStop(1,'#ff0000');
+    if(!heartDisappear){
+        let gradient = ctx.createRadialGradient(heartPos.x, heartPos.y, 10, heartPos.x, heartPos.y, 200);
+        gradient.addColorStop(0,'#ff5c5c');
+        gradient.addColorStop(0.5,'#ff2a8f');
+        gradient.addColorStop(1,'#ff0000');
 
-    ctx.fillStyle = gradient;
-    ctx.shadowColor = '#ff69b4';
-    ctx.shadowBlur = 20;
+        ctx.fillStyle = gradient;
+        ctx.shadowColor = '#ff69b4';
+        ctx.shadowBlur = 20;
 
-    ctx.beginPath();
-    for(let t=0;t<Math.PI*2;t+=0.01){
-        const p = heart(t, scale);
-        if(t===0) ctx.moveTo(canvas.width/2 + p.x, canvas.height/2 + p.y);
-        else ctx.lineTo(canvas.width/2 + p.x, canvas.height/2 + p.y);
+        ctx.globalAlpha = heartAlpha;
+        ctx.beginPath();
+        for(let t=0;t<Math.PI*2;t+=0.01){
+            const p = heartShape(t, heartScale);
+            if(t===0) ctx.moveTo(heartPos.x + p.x, heartPos.y + p.y);
+            else ctx.lineTo(heartPos.x + p.x, heartPos.y + p.y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // 文字
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 48px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.globalAlpha = heartAlpha;
+        ctx.fillText('我爱你', heartPos.x, heartPos.y);
+        ctx.globalAlpha = 1;
     }
-    ctx.closePath();
-    ctx.fill();
-
-    // 文字
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 48px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('我爱你', canvas.width/2, canvas.height/2);
 }
 
 // 动画
 function animate(){
     time += 0.05;
-    const scale = 15 + 2*Math.sin(time*2); // 跳动
-    draw(scale);
+    const scale = heartScale + 2*Math.sin(time*2); // 跳动
+
+    // 爱心移动到目标位置
+    heartPos.x += (targetPos.x - heartPos.x)*0.05;
+    heartPos.y += (targetPos.y - heartPos.y)*0.05;
+
+    // 爱心消失动画
+    if(heartDisappear){
+        heartScale *= 0.95;
+        heartAlpha *= 0.95;
+        if(heartAlpha < 0.05){
+            heartAlpha = 0;
+            heartDisappear = false; // 可重新点击
+        }
+    }
+
+    draw();
     requestAnimationFrame(animate);
 }
 
 animate();
 
-// 点击屏幕炸开花瓣
+// 点击屏幕移动爱心并炸开花瓣
 canvas.addEventListener('click', function(e){
-    const x0 = canvas.width/2;
-    const y0 = canvas.height/2;
-    for(let i=0;i<30;i++){
-        burstPetals.push({
-            x: x0,
-            y: y0,
-            size: Math.random()*6+4,
-            color: petalColors[Math.floor(Math.random()*petalColors.length)],
-            angle: Math.random()*Math.PI*2,
-            vx: (Math.random()-0.5)*6,
-            vy: (Math.random()-0.5)*-6
-        });
+    targetPos.x = e.clientX;
+    targetPos.y = e.clientY;
+
+    // 播放背景音乐淡入
+    const bgm = document.getElementById('bgm');
+    if(bgm.paused){
+        bgm.volume = 0;
+        bgm.play();
+        let fadeIn = setInterval(()=>{
+            if(bgm.volume < 0.7){
+                bgm.volume += 0.01;
+            } else clearInterval(fadeIn);
+        },50);
     }
 
-    // 播放背景音乐（微信需用户操作）
-    const bgm = document.getElementById('bgm');
-    if(bgm.paused) bgm.play();
+    setTimeout(()=>{
+        // 爱心炸开
+        heartDisappear = true;
+        for(let i=0;i<30;i++){
+            burstPetals.push({
+                x: targetPos.x,
+                y: targetPos.y,
+                size: Math.random()*6+4,
+                color: petalColors[Math.floor(Math.random()*petalColors.length)],
+                angle: Math.random()*Math.PI*2,
+                vx: (Math.random()-0.5)*6,
+                vy: (Math.random()-0.5)*-6,
+                alpha:1
+            });
+        }
+    }, 500); // 移动后炸开
 });
 </script>
 </body>
-
 </html>
