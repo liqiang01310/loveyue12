@@ -1,1 +1,9 @@
+my-nextjs-app/
+├─ public/
+│  └─ music/
+│      └─ "C:\Users\king2\OneDrive\Desktop\index.html\daylight.mp3.mp3"
+├─ pages/
+│  └─ index.js
+├─ package.json
+└─ next.config.js
 
